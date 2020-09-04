@@ -55,8 +55,8 @@ for j in range(1,N+2):
     Gsbm = nx.to_numpy_matrix(nx.stochastic_block_model([int(n/2),int(n/2)],P))
     adj[0:n,0:n,i+j] = Gsbm
     print(i+j)
-   
-    
+
+
 ####  Visualization of the graphs
 plt.figure(1)
 for i in range(2*N+2):
