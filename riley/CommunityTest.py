@@ -124,5 +124,6 @@ for i in range(N,2*N):
     plt_cnt +=1
 
 plt.suptitle('2-Dimensional Embedding From $U_{1,2}$')
+plt.show()
 
 
