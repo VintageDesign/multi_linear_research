@@ -1,0 +1,183 @@
+---
+title: "Forecasting demand in Airplanes"
+author: "Jackson Cates"
+date: "8/29/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+```{r, warning=FALSE, message=FALSE}
+library(readr)
+library(tsibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(fable)
+library(feasts)
+library(urca)
+library(gridExtra)
+```
+
+## Reading in data
+```{r}
+airplanes = read_csv('../Data/AirPassengers.csv')
+
+# Turns all of it into a tsibble
+airplanes = airplanes %>% 
+  mutate(month = yearmonth(monthdate)) %>%
+  select(-monthdate) %>%
+  as_tsibble(index = month)
+airplanes
+```
+
+## Time-plot
+```{r}
+airplanes %>% 
+  autoplot(passengers) +
+  ggtitle("Passengers on air flights") + 
+  ylab("# of passengers") +
+  xlab("Year")
+```
+
+- It seems like the variance of the plot is increasing as the date gets farther
+
+\pagebreak
+
+## Seasonal Plot
+```{r}
+airplanes %>% gg_season(passengers) +
+  ggtitle("Seasonal plot: passengers on air flights") + ylab("# of passengers")
+```
+
+- Notice that from above, as the year gets larger the amount of passengers get larger (makes sense from the time plot)
+
+- Notice that the peak of the season gets more extreme as we get further in the year. Seems like we have peaks during July and August (summer) and at March. Also, we have troughs in February and November
+
+- We may have seasonality
+
+\pagebreak
+
+## Lag plots
+```{r}
+plot1 = airplanes %>% gg_lag(passengers, geom="point")
+plot2 = airplanes %>% ACF(passengers) %>% autoplot() + ylab("auto-correlation factor")
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+- As seen in the plots above, we do have a high auto-correlation
+
+## Unit root test
+Using the KPSS test, we have the following null hypothesis
+
+$H_O:$ The data is stationary
+
+$H_A:$ The data is not stationary
+
+```{r}
+airplanes %>% features(passengers, unitroot_kpss)
+```
+
+$p-value = 0.01$
+
+We do indeed reject $H_O$ and say our data is currently **non-stationary**. So we will need to do some difference. This will be a **ARIMA** model.
+
+## Differencing
+
+We can first take a log transformation to stabilize the increased variance
+
+```{r}
+airplanes %>%
+  mutate(log(passengers)) %>%
+  gather() %>%
+  ggplot(aes(x = month, y = value)) +
+  geom_line() +
+  facet_grid(key ~ ., scales = "free_y") +
+  xlab("Year") + ylab("") +
+  ggtitle("Passengers on air flights")
+```
+
+The variance do look more constant now. So we do have some seasonality within our model. Lets take the difference across seasons.
+
+```{r}
+airplanes %>% gg_tsdisplay(difference(log(passengers), 12), plot_type = 'partial')
+```
+
+Still looks a bit periodic. Also we do get a decay in the ACF graph. There is a lag spike at 12 in the ACF. In the PACF there are various lag spikes, but none at 12, 24, etc. There also seems to be no seasonal lags.  Lets look at the seasonal plot.
+
+```{r}
+airplanes %>% gg_season(difference(log(passengers), 12)) +
+  ggtitle("Seasonal plot: passengers on air flights") + ylab("annual difference of log(# of passengers)")
+```
+
+We do seem to lose the seasonality of the data. Lets look at the KPSS test.
+
+```{r}
+airplanes %>% features(difference(log(passengers), 12), unitroot_kpss)
+```
+
+We do in-fact have a more stationary data. We can say that it is "not bad."
+
+\pagebreak
+
+## Choosing a model
+```{r}
+plot1 = airplanes %>% ACF(difference(log(passengers), 12)) %>% autoplot()
+plot2 = airplanes %>% PACF(difference(log(passengers), 12)) %>% autoplot()
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+
+From the ACF and PACF plots above, it seems that a $ARIMA(3, 0, 0)(1, 1, 0)_{12}$ for the following reasons:
+
+- The ACF is exponentially decaying for nonseasonal lags. The ACF seems to be exponentially decaying for seasonal lags as well.
+
+- There are 3 significant lags in the PACF for nonseasonal lags. There is also 1 significant lag in the ACF for seasonal lags.
+
+- The only difference I took was a seasonal difference.
+
+\pagebreak
+
+## Fitting the model
+
+When fitting the original model, $ARIMA(3, 0, 0)(1, 1, 0)_{12}$, we have $AICc = -479.94$. I tried fitting other variations, and found that $ARIMA(2, 0, 0)(1, 1, 1)_{12}$ produces a smaller AICc, where $AICc = -486.74$.
+
+```{r}
+fit = airplanes %>% model(ARIMA(log(passengers) ~ pdq(2, 0, 0) + PDQ(1, 1, 1)))
+report(fit)
+```
+
+## Checking residuals
+```{r}
+fit %>% gg_tsresiduals()
+augment(fit) %>% features(.resid, ljung_box, lag = 12, dof = 4)
+```
+
+As seen above, our residuals do seem to be white noise.
+
+## Forecasting
+```{r}
+airplanes %>%
+  model(ARIMA(log(passengers) ~ pdq(2,0,0) + PDQ(1,1,1))) %>%
+  forecast() %>%
+  autoplot(airplanes) +
+    ylab("Passengers") + xlab("Year")
+accuracy(fit)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
