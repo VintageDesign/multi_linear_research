@@ -10,11 +10,7 @@ import numpy as np
 from scipy import fftpack
 from scipy import linalg
 
-a = np.arange(27).reshape(3,3,3) + 1 
-b = np.arange(24).reshape(3,2,4) + 1 
-c = np.arange(24).reshape(2,3,4) + 1 
 ##  Tensor functions for evaluation  ##
-
 def t_svd(A):
     n1,n2,n3 = A.shape
     F = np.fft.fft(A,axis=0) # Python ordering (axis=0 implies the "depth" axis)
@@ -27,7 +23,7 @@ def t_svd(A):
         tempU[i,0:] = U
         tempS[i,0:] = linalg.diagsvd(S,n2,n3) # need to re-case as matrix #
         tempVt[i,0:] = Vt.T
-     
+
     Ut = np.real(np.fft.ifft(tempU,axis=0))
     St = np.real(np.fft.ifft(tempS,axis=0))
     Vt_t = np.real(np.fft.ifft(tempVt,axis=0))
@@ -100,31 +96,10 @@ def teye(n):
     I = np.zeros((n,n,n))
     I[0,:,:] = np.eye(n)
     return I
-    
+
 def tfronorm(A):
     temp = A*A
     return np.sqrt(np.sum(np.abs(temp)))
-
-## ---------------- Print test routines  -----------------  ##
-print(a)
-
-print('Evaluate Tensor Eigenvalue Decomposition')
-D,V = t_eig(a)
-##  reconstruct a from its eigenvalue decomposition  ##
-print(tprod(tprod(V,D),tinv(V)))
-
-print('Evaluate Tensor Singular Value Decomposition')
-print(c)
-U,S,V = t_svd(c)
-##  reconstruct a from its eigenvalue decomposition  ##
-print(tprod(tprod(U,S),ttran(V)))
-
-print('Evaluate Tensor Identity')
-print(tprod(a,teye(3)))
-
-print('Evaluate Tensor Norm')
-print(tfronorm(a))
-
 
 
 
