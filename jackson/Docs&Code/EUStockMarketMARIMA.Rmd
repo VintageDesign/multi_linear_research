@@ -1,0 +1,137 @@
+---
+title: "Multivariate Modeling Example"
+author: "Jackson Cates"
+date: "9/5/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+```{r, warning=FALSE, message=FALSE}
+library(readr)
+library(marima)
+library(tsibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(tidyverse)
+library(fable)
+library(feasts)
+library(urca)
+library(gridExtra)
+library(forecast)
+library(tseries)
+library(MTS)
+library(vars)
+```
+
+## Data Set Summary
+```{r}
+head(EuStockMarkets)
+tail(EuStockMarkets)
+
+# Seperates the data into training and testing data
+train = subset(EuStockMarkets, start = 1, end = nrow(EuStockMarkets) - 14)
+test = subset(EuStockMarkets, start = nrow(EuStockMarkets) - 14, end = nrow(EuStockMarkets))
+
+# Makes the time plot
+train %>% autoplot() + ylab("Stock Value")
+```
+
+\pagebreak
+
+## Testing Stationary
+```{r}
+plot1 = ggseasonplot(train[,"DAX"], year.labels = T, main = "Seasonal Plot: DAX", ylab = "Stock Value")
+plot2 = ggseasonplot(train[,"SMI"], year.labels = T, main = "Seasonal Plot: SMI", ylab = "Stock Value")
+plot3 = ggseasonplot(train[,"CAC"], year.labels = T, main = "Seasonal Plot: CAC", ylab = "Stock Value")
+plot4 = ggseasonplot(train[,"FTSE"], year.labels = T, main = "Seasonal Plot: FTSE", ylab = "Stock Value")
+grid.arrange(plot1, plot2, plot3, plot4, ncol = 2, nrow = 2)
+```
+
+### Unitroot Test
+$H_O:$ The data is stationary
+
+$H_A:$ The data is not stationary
+
+```{r}
+kpss.test(train[,"DAX"])[3]
+kpss.test(train[,"SMI"])[3]
+kpss.test(train[,"CAC"])[3]
+kpss.test(train[,"FTSE"])[3]
+```
+
+\pagebreak
+
+## Differencing
+
+We are going to take the change between consecutive observations
+
+$y_t^\prime = y_t - y_{t-1}$
+
+```{r}
+trainDiff = train %>% diffM()
+
+plot.ts(trainDiff)
+autoplot(ts(trainDiff))
+
+trainDiff = trainDiff %>% diffM()
+
+plot.ts(trainDiff)
+autoplot(ts(trainDiff))
+```
+
+### Unitroot Test
+$H_O:$ The data is stationary
+
+$H_A:$ The data is not stationary
+
+```{r}
+kpss.test(trainDiff[,"DAX"])[3]
+kpss.test(trainDiff[,"SMI"])[3]
+kpss.test(trainDiff[,"CAC"])[3]
+kpss.test(trainDiff[,"FTSE"])[3]
+```
+
+\pagebreak
+
+## Selecting p and q
+
+***Eccm*** function in R gives a matrix of multivariate Ljung-Box statistics of a vector time series.
+
+$H_O:$ The model does not show a lack of fit (that the autocorrelations (for the chosen lags) in the population from which the sample is taken are all zero).
+
+$H_A:$ The model does show a lack of fit
+
+```{r}
+Eccm(trainDiff)
+```
+
+\pagebreak
+
+## Fitting the model
+
+| p | q |   aic  |   bic   | refAic | refBic | ref2Aic | ref2Bic |
+|---|---|--------|---------|--------|--------|---------|---------|
+| 2 | 2 |25.23482|25.43837 |25.54427|25.71489|NA       |NA       |
+| 3 | 1 |25.31184|25.51539 |25.32326|25.41007|25.61058 |25.79916 |
+| 3 | 2 |58.92585|59.17729 |41.12731|41.36678|25.65966 |25.80334 |
+
+
+```{r}
+fit = VARMA(trainDiff, p = 2, q = 2)
+```
+
+\pagebreak
+
+## Model Checking
+
+```{r}
+MTSdiag(fit)
+phi=fit$Phi; theta=fit$Theta; sig=fit$Sigma 
+VARMAirf(Phi=phi,Theta=theta,Sigma=sig,orth=F)
+```
+

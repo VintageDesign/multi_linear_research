@@ -1,0 +1,268 @@
+---
+title: "VAR Stationary Example"
+author: "Jackson Cates"
+date: "9/15/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tsibble)
+library(ggplot2)
+library(feasts)
+library(gridExtra)
+library(MTS)
+library(dse)
+```
+
+
+## Data Generation
+
+The model I am going to simulate is as follows:
+
+$ts1_t = 0.3*ts1_{t-1} + \epsilon_1$
+
+$ts2_t = 0.4*ts2_{t-1} + ts1_{t-1} + \epsilon_2$
+
+Which results in the following model
+
+$\begin{pmatrix}ts1_t\\ts2_t\end{pmatrix}=\begin{pmatrix}0.3 &0\\1&0.4\end{pmatrix}\begin{pmatrix} ts1_{t-1} \\ts2_{t-1}\end{pmatrix}+\begin{pmatrix} \epsilon_1\\\epsilon_2\end{pmatrix}$
+
+```{r}
+# Generates the two vectors
+set.seed(14)
+length = 320
+testLength = 20
+ts1 = vector("numeric", length)
+noise = makeTSnoise(length, 1, 0)$w
+
+# Simluates the model
+ts1[1] = noise[1]
+for(t in 2:length) {
+  ts1[t] = 0.3*ts1[t - 1] + noise[t]
+}
+
+ts2 = vector("numeric", length)
+noise = makeTSnoise(length, 1, 0)$w
+ts2[1] = noise[1]
+for(t in 2:length) {
+  ts2[t] = 0.4*ts2[t - 1] + ts1[t - 1] + noise[t]
+}
+
+# Takes out the testing data
+test1 = ts1[(length-testLength):(length-1)]
+ts1 = ts1[1:(length-testLength)]
+test2 = ts2[(length-testLength):(length-1)]
+ts2 = ts2[1:(length-testLength)]
+
+length = length - testLength
+
+# Turns them into a time series object
+ts = as_tibble(ts1)
+ts = rename(ts, "ts1" = "value")
+ts[,2] = ts2
+ts = rename(ts, "ts2" = "...2")
+ts[,3] = 1:length
+ts = rename(ts, "index" = "...3")
+
+ts = ts %>% as_tsibble(index = "index")
+```
+
+```{r}
+plot1 = ts %>% autoplot(ts1) + xlab("ts1")
+plot2 = ts %>% autoplot(ts2) + xlab("ts2")
+grid.arrange(plot1, plot2, nrow=2)
+```
+
+\newpage
+
+## Model Selection
+
+We are going to try to select a $VAR(p)$ model. The model is:
+
+$z_t = \phi_0 + \sum^p_{i=1}\phi_iz_{t-i} + a_t$
+
+- $k$ is the number of time series we have
+- $\phi_0$ is a $k$ dimensional constant vector
+- $\phi_i$ is a $k$ by $k$ matrix
+- $a_t$ is a sequence of independent and identically distributed random vectors with mean zero and covariance matrix $\Sigma_a$
+
+### Order Selection with the Sequential likelihood ratio test:
+
+What we are going to do for our order selection is compare $VAR(\ell)$ with $VAR(\ell - 1)$
+
+$H_0$: $\phi_\ell=0$
+
+$H_A$: $\phi_\ell \neq 0$
+
+```{r}
+# Does the order test 
+VARorder(ts[,-3])
+```
+
+As seen above, we should proceed with a $VAR(1)$ model
+
+\newpage
+
+## Fitting the model
+
+```{r}
+# Does LS estimation of the model
+m1 = VAR(ts[,-3], 1)
+```
+
+From the output above, we get the following model:
+
+$z_t=\begin{pmatrix}-0.04\\-0.05\end{pmatrix}+\begin{pmatrix}0.30&0.03\\0.929&0.44\end{pmatrix}z_{t-1}+a_t$
+
+Some things to note:
+
+- Granger Causality is low from ts2 to ts1 (with value of 0.04)
+- Coefficients are really similar to our simulation
+
+\newpage
+
+## Model Checking
+
+### Stationarity
+
+Its turns out that to test if a series is stationary, we can solve the following determinate:
+
+$|I_k - \Phi_1B| = 0$
+
+and if the absolute value of the solutions are greater than 1, it is stationary!
+
+For $VAR(1)$ models, the solutions of $B$ is simply the reciprocal of the eigenvalues of $\Phi_1$
+
+```{r}
+eigen(m1$Phi)[1]
+```
+
+So our series is stationary!
+
+### Multivariate Portmanteau Statistics
+
+Let $R_\ell$ be the theoretical lag $\ell$ cross-correlation matrix of innovation $a_t$
+
+$H_0$: $R_1 = \dots = R_m = 0$
+
+$H_A$: $R_j \neq 0$ for some $1 \leq j \leq m$
+
+```{r}
+mq(m1$residuals)
+```
+
+\newpage
+
+## Model Forecasting
+
+### Static Forecasting
+
+```{r}
+pred = VARpred(m1, h = testLength)
+
+# Calculates the confidence interval
+upperConf = pred$pred + 1.96 * pred$se.err
+lowerConf = pred$pred - 1.96 * pred$se.err
+```
+
+```{r}
+drawLength = 50
+drawStart = length - drawLength
+
+## wrap data into a data.frame
+df1 = data.frame(time = seq(drawStart,length,length=drawLength), M = ts$ts1[(drawStart+1):length], isin = "observations")
+df2 = data.frame(time = seq(length,length+testLength,length=testLength), M = pred$pred[1] , isin = "forecast")
+df3 = data.frame(time = seq(length,length+testLength,length=testLength), M = upperConf[1],isin = "upper_bound")
+df4 = data.frame(time = seq(length,length+testLength,length=testLength), M = lowerConf[1], isin = "lower_bound")
+df5 = data.frame(time = seq(length,length+testLength,length=testLength), M = test1 , isin = "actual")
+df = rbind(df1, df2, df3, df4, df5)
+
+## ggplot object 
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predictions for ts1") + geom_smooth(aes(x=time, y=M, ymax=upperConf[1], ymin=lowerConf[1]), colour="red", data=df2, stat='identity')
+
+## wrap data into a data.frame
+df1 = data.frame(time = seq(drawStart,length,length=drawLength), M = ts$ts2[(drawStart+1):length], isin = "observations")
+df2 = data.frame(time = seq(length,length+testLength,length=testLength), M = pred$pred[2] , isin = "forecast")
+df3 = data.frame(time = seq(length,length+testLength,length=testLength), M = upperConf[2],isin = "upper_bound")
+df4 = data.frame(time = seq(length,length+testLength,length=testLength), M = lowerConf[2], isin = "lower_bound")
+df5 = data.frame(time = seq(length,length+testLength,length=testLength), M = test2, isin = "actual")
+df = rbind(df1, df2, df3, df4, df5)
+
+## ggplot object 
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predictions for ts2") + geom_smooth(aes(x=time, y=M, ymax=upperConf[2], ymin=lowerConf[2]), colour="yellow", data=df2, stat='identity')
+```
+
+### Dynamic Forecasting
+
+```{r}
+currData = ts
+currPred1 = vector("numeric", testLength)
+currPred2 = vector("numeric", testLength)
+upperConf1 = vector("numeric", testLength)
+upperConf2 = vector("numeric", testLength)
+lowerConf1 = vector("numeric", testLength)
+lowerConf2 = vector("numeric", testLength)
+for (h in (length + 1):(length+testLength)) {
+  # build the model
+  m2 = VAR(currData, 1, output = F)
+  
+  i = h - length
+  
+  # predicts
+  currPred = VARpred(m2, output = T)
+  currPred1[i] = currPred$pred[1]
+  currPred2[i] = currPred$pred[2]
+  upperConf1[i] = currPred1[i] + 1.96*currPred$se.err[1]
+  upperConf2[i] = currPred2[i] + 1.96*currPred$se.err[2]
+  lowerConf1[i] = currPred1[i] - 1.96*currPred$se.err[1]
+  lowerConf2[i] = currPred2[i] - 1.96*currPred$se.err[2]
+  
+  
+  oldData = as_tibble(currData)
+  currData = as_tibble(currData$ts1)
+  currData[h,1] = test1[i]
+  oldData = oldData[,-1]
+  oldData[h, 1] = test2[i]
+  currData[,2] = oldData$ts2
+  currData[,3] = 1:h
+  currData = rename(currData, "ts1" = "value")
+  currData = rename(currData, "ts2" = "...2")
+  currData = rename(currData, "index" = "...3")
+  currData = currData %>% as_tsibble(index = "index")
+}
+
+
+```
+
+```{r}
+## wrap data into a data.frame
+df1 = data.frame(time = seq(drawStart,length,length=drawLength), M = ts$ts1[(drawStart+1):length], isin = "observations")
+df2 = data.frame(time = seq(length,length+testLength,length=testLength), M = currPred1 , isin = "forecast")
+df3 = data.frame(time = seq(length,length+testLength,length=testLength), M = upperConf1,isin = "upper_bound")
+df4 = data.frame(time = seq(length,length+testLength,length=testLength), M = lowerConf1, isin = "lower_bound")
+df5 = data.frame(time = seq(length,length+testLength,length=testLength), M = test1, isin = "actual")
+df = rbind(df1, df2, df3, df4, df5)
+
+## ggplot object 
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predictions for ts1") + geom_smooth(aes(x=time, y=M, ymax=upperConf1, ymin=lowerConf1), colour="yellow", data=df2, stat='identity')
+
+## wrap data into a data.frame
+df1 = data.frame(time = seq(drawStart,length,length=drawLength), M = ts$ts1[(drawStart+1):length], isin = "observations")
+df2 = data.frame(time = seq(length,length+testLength,length=testLength), M = currPred2, isin = "forecast")
+df3 = data.frame(time = seq(length,length+testLength,length=testLength), M = upperConf2,isin = "upper_bound")
+df4 = data.frame(time = seq(length,length+testLength,length=testLength), M = lowerConf2, isin = "lower_bound")
+df5 = data.frame(time = seq(length,length+testLength,length=testLength), M = test2, isin = "actual")
+df = rbind(df1, df2, df3, df4, df5)
+
+## ggplot object 
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predictions for ts2") + geom_smooth(aes(x=time, y=M, ymax=upperConf2, ymin=lowerConf2), colour="yellow", data=df2, stat='identity')
+```
+
+
