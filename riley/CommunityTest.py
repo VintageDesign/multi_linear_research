@@ -23,7 +23,7 @@ from scipy import linalg
 plt.close()
 
 N = 20
-n = 100
+n = 40
 p = 0.2
 
 adj = np.zeros([n,n,2*N+2])
@@ -97,7 +97,7 @@ plt.title('Using Matrix SVD')
 # Next largest, etc. #
 for i in range(2*N+2):
     U, s, Vh = np.linalg.svd(adj[0:n,0:n,i],full_matrices = True, compute_uv = True)
-    s_vec[i] = s[3]
+    s_vec[i] = s[1]
     U_data[0:n,0:n,i] = U
     V_data[0:n,0:n,i] = Vh
 
