@@ -1,2 +1,8 @@
 env/
 .Rproj.user
+jackson/Data/stocks/*
+!jackson/Data/stocks/PEP.csv
+!jackson/Data/stocks/COKE.csv
+!jackson/Data/stocks/SBUX.csv
+jackson/Data/symbols_valid_meta.csv
+jackson/Data/SpongebobGifs/*

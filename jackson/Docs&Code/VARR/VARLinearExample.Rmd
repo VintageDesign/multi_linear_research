@@ -1,0 +1,271 @@
+---
+title: "VarLinearExample"
+author: "Jackson Cates"
+date: "9/26/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tsibble)
+library(ggplot2)
+library(feasts)
+library(gridExtra)
+library(MTS)
+library(tseries)
+```
+
+## Data Generation
+
+$z_{1, t} = 0.8z_{1, t-1} + 0.6z_{2, t-1}+0.1t+ \epsilon_{1,t}+0.12\epsilon_{1,t-1}$
+
+$z_{2, t} = 0.2z_{1, t-1} + 0.3z_{2, t-1}+\epsilon_{2, t}+0.1\epsilon_{1,t-1} + 0.025\epsilon_{2, t-1}$
+
+$z_t = \begin{pmatrix} 0.1 \\ 0 \end{pmatrix}t + \begin{pmatrix} 0.8 & 0.6 \\ 0.2 & 0.3 \end{pmatrix}z_{t-1} + \epsilon_t + \begin{pmatrix} 0.12 & 0 \\ 0.1 & 0.025 \end{pmatrix}\epsilon_{t-1}$
+
+```{r}
+set.seed(6)
+skip = 10
+length = 100
+testLength = 20
+noiseSd = 5
+
+dataLength = skip + length + testLength
+
+# Make some noise!
+noise1 = rnorm(dataLength, 0, noiseSd)
+noise2 = rnorm(dataLength, 0, noiseSd)
+
+# Sets the first data point
+ts1 = vector("numeric", length)
+ts2 = vector("numeric", length)
+ts1[1] = noise1[1]
+ts2[1] = noise2[1]
+
+# Loops though, makes linear data
+for(t in 2:dataLength) {
+  ts1[t] = 0.8*ts1[t-1] + 0.6*ts2[t-1] + 0.1*t + noise1[t] + 0.12*noise1[t-1]
+  ts2[t] = 0.2*ts1[t-1] + 0.3*ts2[t-1] + noise2[t] + 0.1*noise1[t-1] + 0.025*noise2[t-1]
+}
+
+# Takes out the testing data
+test1 = ts1[(length + skip + 1):(dataLength)]
+ts1 = ts1[(skip + 1):(length+skip)]
+test2 = ts2[(length + skip + 1):(dataLength)]
+ts2 = ts2[(skip + 1):(length+skip)]
+
+# Turns them into a time series object
+ts = as_tibble(ts1)
+ts = rename(ts, "ts1" = "value")
+ts[,2] = ts2
+ts = rename(ts, "ts2" = "...2")
+ts[,3] = 1:length
+ts = rename(ts, "index" = "...3")
+
+tsTest = as_tibble(test1)
+tsTest = rename(tsTest, "ts1" = "value")
+tsTest[,2] = test2
+tsTest = rename(tsTest, "ts2" = "...2")
+tsTest[,3] = (length + 1):(length + testLength)
+tsTest = rename(tsTest, "index" = "...3")
+tsTest = tsTest %>% as_tsibble(index = "index")
+
+ts = ts %>% as_tsibble(index = "index")
+```
+
+```{r}
+plot1 = ts %>% autoplot(ts1) + xlab("ts1")
+plot2 = ts %>% autoplot(ts2) + xlab("ts2")
+grid.arrange(plot1, plot2, nrow=2)
+
+df1 = data.frame(time = ts$index, M = ts$ts1, isin = "ts1")
+df2 = data.frame(time = ts$index, M = ts$ts2, isin = "ts2")
+df = rbind(df1, df2)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("ts1 and ts2")
+```
+
+## Differencing
+
+We are going to take the change between consecutive observations
+
+$y_t^\prime = y_t - y_{t-1}$
+
+```{r}
+# Takes a lagged difference of 1
+tsDiff = ts %>% diffM()
+tsDiff[,3] = 1:(length-1)
+tsDiff = tsDiff %>% as_tibble()
+tsDiff = tsDiff %>% as_tsibble(index = "index")
+
+df1 = data.frame(time = tsDiff$index, M = tsDiff$ts1, isin = "ts1")
+df2 = data.frame(time = tsDiff$index, M = tsDiff$ts2, isin = "ts2")
+df = rbind(df1, df2)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("ts1 and ts2")
+
+kpss.test(tsDiff$ts1)
+kpss.test(tsDiff$ts2)
+```
+
+```{r}
+VARorder(tsDiff[,-3])
+```
+
+## Fitting the model
+
+$z_t = \begin{pmatrix} 2.06 \\ 0 \end{pmatrix} + \begin{pmatrix} 0 & 0.32 \\ 0.35 & -0.42 \end{pmatrix}z_{t-1} + \begin{pmatrix} -0.10 & 0 \\ 0 & -0.29 \end{pmatrix}z_{t-2} +  a_t$
+
+```{r}
+# Does LS estimation of the model
+m1 = VAR(tsDiff[,-3], 2)
+m1R = refVAR(m1)
+```
+
+## Model Checking
+
+### Multivariate Portmanteau Statistics
+
+Let $R_\ell$ be the theoretical lag $\ell$ cross-correlation matrix of innovation $a_t$
+
+$H_0$: $R_1 = \dots = R_m = 0$
+
+$H_A$: $R_j \neq 0$ for some $1 \leq j \leq m$
+
+```{r}
+mq(m1R$residuals)
+```
+
+### Impulse
+
+The first graph is the impulse response, while the second is accumulated response.
+
+```{r}
+VARirf(m1R$Phi, m1$Sigma)
+```
+
+
+## Model Forecasting
+
+```{r}
+pred = VARpred(m1R, h = testLength)
+
+# Calculates the confidence interval
+upperConfDiff = pred$pred + 1.96 * pred$se.err
+lowerConfDiff = pred$pred - 1.96 * pred$se.err
+```
+
+```{r}
+testDiff = tsTest %>% diffM()
+testDiff[,3] = 1:(testLength-1)
+testDiff = testDiff %>% as_tibble()
+testDiff = testDiff %>% as_tsibble(index = "index")
+
+tsPredDiff = as_tibble(pred$pred[,1])
+tsPredDiff = rename(tsPredDiff, "ts1" = "value")
+tsPredDiff[,2] = pred$pred[,2]
+tsPredDiff = rename(tsPredDiff, "ts2" = "...2")
+tsPredDiff[,3] = 1:testLength
+tsPredDiff = rename(tsPredDiff, "index" = "...3")
+tsPredDiff = tsPredDiff %>% as_tsibble(index = "index")
+
+df1 = data.frame(time = testDiff$index, M = testDiff$ts1, isin = "Actual")
+df2 = data.frame(time = tsPredDiff$index, M = tsPredDiff$ts1, isin = "Predicited")
+df3 = data.frame(time = 1:testLength, M = upperConfDiff[,1], isin = "Upper Bound")
+df4 = data.frame(time = 1:testLength, M = lowerConfDiff[,1], isin = "Lower Bound")
+df = rbind(df1, df2, df3, df4)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicited of Differenced Values for ts1")
+
+df1 = data.frame(time = testDiff$index, M = testDiff$ts2, isin = "Actual")
+df2 = data.frame(time = tsPredDiff$index, M = tsPredDiff$ts2, isin = "Predicited")
+df3 = data.frame(time = 1:testLength, M = upperConfDiff[,2], isin = "Upper Bound")
+df4 = data.frame(time = 1:testLength, M = lowerConfDiff[,2], isin = "Lower Bound")
+df = rbind(df1, df2, df3, df4)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicited of Differenced Values for ts2")
+```
+
+## Inverting the Differencing
+
+$y_t = \sum_{i=1}^ty_i\prime + y_0$
+
+```{r}
+# Accumlates all of the transfomred values
+tsPred = tsPredDiff[,-3] %>% cumsum() %>% as_tibble()
+upperConf = matrix(nrow = testLength, ncol = 2)
+upperConf[,1] = upperConfDiff[,1] %>% cumsum()
+upperConf[,2] = upperConfDiff[,2] %>% cumsum()
+lowerConf = matrix(nrow = testLength, ncol = 2)
+lowerConf[,1] = lowerConfDiff[,1] %>% cumsum()
+lowerConf[,2] = lowerConfDiff[,2] %>% cumsum()
+
+# Adds the intercepts
+tsPred$ts1 = tsPred$ts1 + ts$ts1[length]
+tsPred$ts2 = tsPred$ts2 + ts$ts2[length]
+tsPred[,3] = (length + 1):(length + testLength)
+tsPred = rename(tsPred, "index" = "...3")
+tsPred = tsPred %>% as_tsibble(index = "index")
+upperConf[,1] = upperConf[,1] + ts$ts1[length]
+upperConf[,2] = upperConf[,2] + ts$ts2[length]
+lowerConf[,1] = lowerConf[,1] + ts$ts1[length]
+lowerConf[,2] = lowerConf[,2] + ts$ts2[length]
+
+df1 = data.frame(time = tsTest$index, M = tsTest$ts1, isin = "Actual")
+df2 = data.frame(time = tsPred$index, M = tsPred$ts1, isin = "Predicited")
+df3 = data.frame(time = (length+1):(length+testLength), M = upperConf[,1], isin = "Upper Bound")
+df4 = data.frame(time = (length+1):(length + testLength), M = lowerConf[,1], isin = "Lower Bound")
+df = rbind(df1, df2, df3, df4)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicited of Non-Differenced Values for ts1 with Bounds")
+df = rbind(df1, df2)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicited of Non-Differenced Values for ts1 without Bounds")
+
+df1 = data.frame(time = tsTest$index, M = tsTest$ts2, isin = "Actual")
+df2 = data.frame(time = tsPred$index, M = tsPred$ts2, isin = "Predicited")
+df3 = data.frame(time = (length+1):(length+testLength), M = upperConf[,2], isin = "Upper Bound")
+df4 = data.frame(time = (length+1):(length + testLength), M = lowerConf[,2], isin = "Lower Bound")
+df = rbind(df1, df2, df3, df4)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicited of Non-Differenced Values for ts2 with Bounds")
+df = rbind(df1, df2)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicited of Non-Differenced Values for ts2 without Bounds")
+```
+
+```{r}
+drawStart = 1
+
+df1 = data.frame(time = seq(drawStart, length, length=length), M = ts$ts1, isin = "Train")
+df2 = data.frame(time = seq(length, length + testLength, length=testLength), M = tsTest$ts1, isin = "Test")
+df3 = data.frame(time = seq(length, length + testLength, length=testLength), M = tsPred$ts1, isin = "Predicited")
+df4 = data.frame(time = (length+1):(length+testLength), M = upperConf[,1], isin = "Upper Bound")
+df5 = data.frame(time = (length+1):(length + testLength), M = lowerConf[,1], isin = "Lower Bound")
+df = rbind(df1, df2, df3, df4, df5)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicition for ts1 with Bounds")
+df = rbind(df1, df2, df3)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicition for ts1 witout Bounds")
+
+df1 = data.frame(time = seq(drawStart, length, length=length), M = ts$ts2, isin = "Train")
+df2 = data.frame(time = seq(length, length + testLength, length=testLength), M = tsTest$ts2, isin = "Test")
+df3 = data.frame(time = seq(length, length + testLength, length=testLength), M = tsPred$ts2, isin = "Predicited")
+df4 = data.frame(time = (length+1):(length+testLength), M = upperConf[,2], isin = "Upper Bound")
+df5 = data.frame(time = (length+1):(length + testLength), M = lowerConf[,2], isin = "Lower Bound")
+df = rbind(df1, df2, df3, df4, df5)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicition for ts2")
+df = rbind(df1, df2, df3)
+ggplot(df, aes(x = time, y = M, color = isin)) + geom_line() + ggtitle("Predicition for ts2 witout Bounds")
+```
+
+
+### MAE
+
+```{r}
+mean(abs(tsTest$ts1 - tsPred$ts1))
+mean(abs(tsTest$ts2 - tsPred$ts2))
+```
+
+### MSE
+
+```{r}
+mean((tsTest$ts1 - tsPred$ts1)*(tsTest$ts1 - tsPred$ts1))
+mean((tsTest$ts2 - tsPred$ts2)*(tsTest$ts2 - tsPred$ts2))
+```
