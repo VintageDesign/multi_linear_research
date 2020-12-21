@@ -1,6 +1,7 @@
 # Manipulation
 import pandas as pd
 import numpy as np
+from math import prod
 
 # Plots
 import matplotlib.pylab as plt
@@ -44,15 +45,57 @@ def invert_diff_transformation(df_forecast, df_train):
 
     return df_forecast
 
+
+def extract_train(data, N):   
+    train = np.zeros((N, len(data[0])))
+    for i in range(N):
+        train[i] = data[i]
+    return train
+
+
+def extract_test(data, N_train, N_test):
+    test = np.zeros((N_test, len(data[0])))
+    for i in range(N_test):
+        test[i] = data[N_train + i]
+    return test
+
+
+def tensor_to_vector(tensor):
+    
+    p = prod(tensor[0][0].shape)
+    N = len(tensor)
+    shape = (N, p)
+    v = np.zeros(shape)
+    for n in range(N):
+        v[n, :] = vec(tensor[n][0])
+
+    return v
+
+def vec(matrix):
+    return matrix.flatten('F')
+
+
+def calc_diff_per_vector(test, results):
+    
+    shape = test.shape
+    errors = pd.DataFrame(index=test.index, columns=test.columns)
+
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            errors.iloc[i][j] = test.iloc[i][j] - results.iloc[i][j]
+
+    return errors
+
+
 ####################### PLOTS #################################
-def plot_ts(ts, figsize = (14, 7), colormap="Dark2"):
+def plot_ts(ts, seperate_figsize = (14, 7), stacked_figuresize = (14, 7), colormap="Dark2"):
 
     # Plots the seprate plots
-    ax = ts.plot(colormap='Dark2', figsize=figsize, subplots = True, layout = (len(ts.columns), 1), sharex = False, sharey = False)
+    ax = ts.plot(colormap='Dark2', figsize=seperate_figsize, subplots = True, layout = (len(ts.columns), 1), sharex = False, sharey = False)
     plt.show()
 
     # Plots the stacked plot
-    ax = ts.plot(colormap='Dark2', figsize=figsize)
+    ax = ts.plot(colormap='Dark2', figsize=stacked_figuresize)
     plt.show()
 
 
@@ -110,7 +153,6 @@ def plot_forecast_vs_actual(test, fc, upper, lower, nobs, show_conf = True):
             ax.fill_between(fc.index, lower[col + "_lower"], upper[col + "_upper"], color = 'b', alpha = .2)
 
     plt.tight_layout()
-
 
 ####################### TESTS AND MODELING #################################
 def grangers_causation_matrix(data, variables, maxlag=12, test='ssr_chi2test', verbose=False):    
@@ -287,3 +329,18 @@ def forecast_accuracy(forecast, actual):
 
       # prints the row
       print('{0:<7}'.format(currActualCol), '{0:<14}'.format('{:.3f}'.format(me)), '{0:<14}'.format('{:.3f}'.format(mse)), '{0:<14}'.format('{:.3f}'.format(mae)), '{0:<14}'.format('{:.3f}%'.format(mape)))
+
+
+def calc_mape_per_vector(test, results):
+    shape = test.shape
+    mape = pd.DataFrame(index=test.index, columns=["MAPE"])
+
+    for i in range(shape[0]):
+
+        test_vec = test.iloc[i].to_numpy()
+        result_vec = results.iloc[i].to_numpy()
+        error = np.linalg.norm(test_vec - result_vec)/np.linalg.norm(test_vec)
+
+        mape.iloc[i] = error
+      
+    return mape
