@@ -312,6 +312,30 @@ def forecast(fit, train, test, nobs, calc_conf = True):
 
     return df
 
+def forecast_by_step(fit, train, test, nobs, calc_conf = True):
+    
+    # Gets the lag order
+    lag_order = fit.k_ar
+
+    # Input data
+    input_data = train.values[-lag_order:]
+
+    df = pd.DataFrame(columns=test.columns)
+    df.columns = test.columns + "_forecast"
+
+    for i in range(nobs):
+        # Forecases
+        fc = fit.forecast_interval(y = input_data, steps = 1)
+
+        tmp = pd.DataFrame(fc[0], index=[test.index[i]], columns=df.columns)
+
+        df = df.append(tmp)
+
+        # adds the result onto the data
+        input_data = fc[0]
+
+    return df
+
 def forecast_accuracy(forecast, actual):
    print("Results")
    print('-'*70)
