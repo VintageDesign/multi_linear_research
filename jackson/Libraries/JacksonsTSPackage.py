@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 from math import prod
+import scipy.fft as sfft
 
 # Plots
 import matplotlib.pylab as plt
@@ -34,16 +35,34 @@ def make_view_ts(ts):
     return tsView
 
 
-def invert_diff_transformation(df_forecast, df_train):
+def calc_seasonal_diff(data, interval):
+    shape = data.shape
+    diff = np.zeros((shape[0] - interval, shape[1]))
+    for i in range(shape[1]):
+        for j in range(shape[0] - interval):
+            diff[j][i] = data[i][j + interval] - data[i][j]
+
+    return pd.DataFrame(diff)
+    
+
+def invert_diff_transformation(df_forecast, df_train, interval = 1):
     """Revert back the differencing to get the forecast to original scale."""
-    df_forecast = df_forecast.copy()
-    for i in range(0, len(df_forecast.columns)):  
-        curr_forecast_col = df_forecast.columns[i]
-        curr_train_col = df_train.columns[i]
+    df_forecast_invert = df_forecast.copy()
+    for col in range(len(df_forecast.columns)): 
 
-        df_forecast[str(curr_forecast_col)] = df_train[curr_train_col].iloc[-1] + df_forecast[str(curr_forecast_col)].cumsum()
+        forcast_col = df_forecast_invert.columns[col]
+        train_col = df_train.columns[col]
 
-    return df_forecast
+        # Does the invert 
+        for i in range(len(df_forecast)):
+
+            accum = 0
+            for j in range(int(i / interval)):
+                accum += df_forecast[forcast_col][i - (j+1)*interval]
+
+            df_forecast_invert[forcast_col][i] += df_train[train_col].iloc[-interval + i % interval] + accum
+
+    return df_forecast_invert
 
 
 def extract_train(data, N):   
@@ -60,14 +79,28 @@ def extract_test(data, N_train, N_test):
     return test
 
 
+def extract_train_tensor(tensor, N):
+    train = np.zeros((N, tensor[0].shape[0], tensor[0].shape[1]))
+    for i in range(N):
+        train[i] = tensor[i]
+    return train
+
+
+def extract_test_tensor(tensor, N_train, N_test):
+    test = np.zeros((N_test, tensor[0].shape[0], tensor[0].shape[1]))
+    for i in range(N_test):
+        test[i] = tensor[i + N_train]
+    return test
+
+
 def tensor_to_vector(tensor):
     
-    p = prod(tensor[0][0].shape)
+    p = prod(tensor[0].shape)
     N = len(tensor)
     shape = (N, p)
     v = np.zeros(shape)
     for n in range(N):
-        v[n, :] = vec(tensor[n][0])
+        v[n, :] = vec(tensor[n])
 
     return v
 
@@ -86,6 +119,32 @@ def calc_diff_per_vector(test, results):
 
     return errors
 
+
+def apply_dct_to_tensor(tensor, type = 2):
+
+    N = len(tensor)
+    matrix_shape = tensor[0].shape
+    dct_tensor = np.zeros((N, matrix_shape[0], matrix_shape[1]))
+
+    for i in range(N):
+        for j in range(matrix_shape[0]):
+            dct_tensor[i][j] = sfft.dct(tensor[i][j], type=type)
+
+    return dct_tensor
+
+
+def apply_inverse_dct_to_tensor(tensor, type = 2):
+
+    N = len(tensor)
+    matrix_shape = tensor[0].shape
+    dct_tensor = np.zeros((N, matrix_shape[0], matrix_shape[1]))
+
+    for i in range(N):
+        for j in range(matrix_shape[0]):
+            dct_tensor[i][j] = sfft.idct(tensor[i][j], type=type)
+
+    return dct_tensor
+    
 
 ####################### PLOTS #################################
 def plot_ts(ts, seperate_figsize = (14, 7), stacked_figuresize = (14, 7), colormap="Dark2"):
@@ -367,4 +426,20 @@ def calc_mape_per_vector(test, results):
 
         mape.iloc[i] = error
       
+    return mape
+
+def calc_mape_per_matrix(test_tensor, result_tensor):
+
+    N = len(test_tensor)
+
+    mape = pd.DataFrame(index=range(N), columns=["MAPE"])
+
+    for i in range(N):
+
+        test_matrix = test_tensor[i]
+        result_matrx = result_tensor[i]
+        error = np.linalg.norm(test_matrix - result_matrx)/np.linalg.norm(test_matrix)
+
+        mape.iloc[i] = error
+
     return mape
