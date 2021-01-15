@@ -1,7 +1,6 @@
 # Manipulation
 import pandas as pd
 import numpy as np
-from math import prod
 import scipy.fft as sfft
 
 # Plots
@@ -95,7 +94,7 @@ def extract_test_tensor(tensor, N_train, N_test):
 
 def tensor_to_vector(tensor):
     
-    p = prod(tensor[0].shape)
+    p = tensor[0].shape[0] * tensor[0].shape[1]
     N = len(tensor)
     shape = (N, p)
     v = np.zeros(shape)
