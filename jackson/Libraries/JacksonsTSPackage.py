@@ -145,6 +145,14 @@ def apply_inverse_dct_to_tensor(tensor, type = 2):
     return dct_tensor
     
 
+def split_cols_into_model_sets(transformed_tensor, N):
+    matrix_shape = transformed_tensor[0].shape
+    model_sets = np.empty((matrix_shape[1], N, matrix_shape[0]))
+    for i in range(matrix_shape[1]):
+        for j in range(N):
+            model_sets[i][j] = transformed_tensor[j][:,i]
+    return model_sets
+
 ####################### PLOTS #################################
 def plot_ts(ts, seperate_figsize = (14, 7), stacked_figuresize = (14, 7), colormap="Dark2"):
 
