@@ -123,7 +123,7 @@ def apply_dct_to_tensor(tensor, type = 2):
 
     N = len(tensor)
     matrix_shape = tensor[0].shape
-    dct_tensor = np.zeros((N, matrix_shape[0], matrix_shape[1]))
+    dct_tensor = np.empty((N, matrix_shape[0], matrix_shape[1]))
 
     for i in range(N):
         for j in range(matrix_shape[0]):
@@ -136,7 +136,7 @@ def apply_inverse_dct_to_tensor(tensor, type = 2):
 
     N = len(tensor)
     matrix_shape = tensor[0].shape
-    dct_tensor = np.zeros((N, matrix_shape[0], matrix_shape[1]))
+    dct_tensor = np.empty((N, matrix_shape[0], matrix_shape[1]))
 
     for i in range(N):
         for j in range(matrix_shape[0]):
