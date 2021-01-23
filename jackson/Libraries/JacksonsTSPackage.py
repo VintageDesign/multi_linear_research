@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 import scipy.fft as sfft
+import pywt
 
 # Plots
 import matplotlib.pylab as plt
@@ -35,6 +36,7 @@ def make_view_ts(ts):
 
 
 def calc_seasonal_diff(data, interval):
+    """Data has to be a dataframe!"""
     shape = data.shape
     diff = np.zeros((shape[0] - interval, shape[1]))
     for i in range(shape[1]):
@@ -145,6 +147,33 @@ def apply_inverse_dct_to_tensor(tensor, type = 2):
     return dct_tensor
     
 
+def apply_dwt_to_tensor(tensor, wavelet = 'haar'):
+
+    N = len(tensor)
+    matrix_shape = tensor[0].shape
+    dwt_tensor = np.zeros((N, matrix_shape[0], matrix_shape[1]))
+
+    for i in range(N):
+        for j in range(matrix_shape[0]):
+            tmp = pywt.dwt(tensor[i][j], wavelet)
+            dwt_tensor[i][j] = np.append(tmp[0], tmp[1])
+    return dwt_tensor
+
+
+def apply_inverse_dwt_to_tensor(transformed_tensor, wavelet = 'haar'):
+
+    N = len(transformed_tensor)
+    matrix_shape = transformed_tensor[0].shape
+    tensor = np.empty((N, matrix_shape[0], matrix_shape[1]))
+    half_len = int(matrix_shape[0] / 2)
+
+    for i in range(N):
+        for j in range(matrix_shape[0]):
+            tmp = (transformed_tensor[i][j][:half_len], transformed_tensor[i][j][half_len:])
+            tensor[i][j] = pywt.idwt(tmp[0], tmp[1], wavelet)
+    return tensor
+
+
 def split_cols_into_model_sets(transformed_tensor, N):
     matrix_shape = transformed_tensor[0].shape
     model_sets = np.empty((matrix_shape[1], N, matrix_shape[0]))
@@ -152,6 +181,15 @@ def split_cols_into_model_sets(transformed_tensor, N):
         for j in range(N):
             model_sets[i][j] = transformed_tensor[j][:,i]
     return model_sets
+
+
+def collect_result_cols_into_tensor(model_sets, N_test):
+    shape = model_sets.shape
+    tensor = np.empty((N_test, shape[2], shape[0]))
+    for i in range(N_test):
+        for j in range(shape[0]):
+            tensor[i][:,j] = model_sets[j][i]
+    return tensor
 
 ####################### PLOTS #################################
 def plot_ts(ts, seperate_figsize = (14, 7), stacked_figuresize = (14, 7), colormap="Dark2"):
