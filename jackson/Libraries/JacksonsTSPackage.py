@@ -192,6 +192,13 @@ def collect_result_cols_into_tensor(model_sets, N_test):
     return tensor
 
 ####################### PLOTS #################################
+def implot_tensor(tensor, fig_dim, cmap='gray'):
+    fig, axs = plt.subplots(fig_dim[0], fig_dim[1])
+    for i in range(fig_dim[0]):
+        for j in range(fig_dim[1]):
+            axs[i, j].imshow(tensor[i*fig_dim[1] + j], cmap='gray')
+            axs[i, j].axis('off')
+
 def plot_ts(ts, seperate_figsize = (14, 7), stacked_figuresize = (14, 7), colormap="Dark2"):
 
     # Plots the seprate plots
