@@ -134,18 +134,44 @@ def apply_dct_to_tensor(tensor, type = 2):
     return dct_tensor
 
 
-def apply_inverse_dct_to_tensor(tensor, type = 2):
+def apply_inverse_dct_to_tensor(dct_tensor, type = 2):
 
-    N = len(tensor)
-    matrix_shape = tensor[0].shape
-    dct_tensor = np.empty((N, matrix_shape[0], matrix_shape[1]))
+    N = len(dct_tensor)
+    matrix_shape = dct_tensor[0].shape
+    tensor = np.empty((N, matrix_shape[0], matrix_shape[1]))
 
     for i in range(N):
         for j in range(matrix_shape[0]):
-            dct_tensor[i][j] = sfft.idct(tensor[i][j], type=type)
+            tensor[i][j] = sfft.idct(dct_tensor[i][j], type=type)
 
-    return dct_tensor
+    return tensor
     
+
+def apply_dft_to_tensor(tensor):
+
+    N = len(tensor)
+    matrix_shape = tensor[0].shape
+    dft_tensor = np.empty((N, matrix_shape[0], matrix_shape[1]))
+
+    for i in range(N):
+        for j in range(matrix_shape[0]):
+            dft_tensor[i][j] = sfft.fft(tensor[i][j])
+
+    return dft_tensor
+
+
+def apply_inverse_dft_to_tensor(dft_tensor):
+
+    N = len(dft_tensor)
+    matrix_shape = dft_tensor[0].shape
+    tensor = np.empty((N, matrix_shape[0], matrix_shape[1]))
+
+    for i in range(N):
+        for j in range(matrix_shape[0]):
+            tensor[i][j] = sfft.ifft(dft_tensor[i][j])
+
+    return tensor
+
 
 def apply_dwt_to_tensor(tensor, wavelet = 'haar'):
 
