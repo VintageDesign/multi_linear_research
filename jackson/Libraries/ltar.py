@@ -112,7 +112,7 @@ class LTAR():
             coefs[i] = self.__apply_inverse_trans(coefs[i], transformation, 0)
 
         # Performs the inverse transformation to the const matrix
-        c = self.__apply_inverse_trans(c, transformation, 0)
+        c = self.__apply_inverse_trans(c, transformation, 1)
 
         self.coefs = coefs
         self.c = c
@@ -127,7 +127,7 @@ class LTAR():
         forecast_tensor = np.zeros((interval+p, matrix_shape[0], matrix_shape[1]))
         forecast_tensor[:p] = self.train[-p:]
         for i in range(p,interval+p):
-            total = 0
+            total = np.zeros(matrix_shape)
             for j in range(p):
                 total += self.__mul_ten_and_mat(self.coefs[j], forecast_tensor[i-j-1])
             forecast_tensor[i] = total + self.c
