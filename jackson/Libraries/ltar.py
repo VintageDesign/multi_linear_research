@@ -1,8 +1,20 @@
+from os import P_WAIT
 from statsmodels.tsa.api import VAR
 import scipy.fft as sfft
 import pywt
 import numpy as np
 import pandas as pd
+
+def diff(data_tensor, interval = 1):
+    shape = data_tensor.shape
+
+    if len(shape) != 3:
+        raise ValueError(f"{len(train.shape)} is in invalid tensor order. Only 3rd order tensors are valid with this class")
+
+    diff = np.zeros((shape[0] - interval, shape[1], shape[2]))
+    for i in range(interval, shape[0] - interval + 1):
+        diff[i - interval] = data_tensor[i] - data_tensor[i - interval]
+    return diff
 
 class LTAR():
     def __init__(self, train):
@@ -21,7 +33,13 @@ class LTAR():
     def __apply_trans(self, tensor, transformation, axis):            
 
         if transformation == "dwt":
-            raise NotImplementedError()
+
+            # Only allow even axis size
+            if tensor.shape[axis] % 2 != 0:
+                raise ValueError(f"{tensor.shape[axis]} is not a valid axis size for DWT. Only even sizes are allowed")
+
+            cA,cD = pywt.dwt(tensor, "haar", axis=axis)
+            result = np.append(cA, cD, axis=axis)
         elif transformation == "dct":
             result = sfft.dct(tensor, axis=axis)
         elif transformation == "dft":
@@ -34,7 +52,8 @@ class LTAR():
     def __apply_inverse_trans(self, trans_tensor, transformation, axis):
 
         if transformation == "dwt":
-            raise NotImplementedError()
+            cA,cD = np.split(trans_tensor, 2, axis=axis)
+            result = pywt.idwt(cA,cD, "haar", axis=axis)
         elif transformation == "dct":
             result = sfft.idct(trans_tensor, axis=axis)
         elif transformation == "dft":
