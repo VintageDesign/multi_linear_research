@@ -16,6 +16,23 @@ def diff(data_tensor, interval = 1):
         diff[i - interval] = data_tensor[i] - data_tensor[i - interval]
     return diff
 
+def invert_diff(diff_tensor, y0_tensor, interval = 1):
+    shape = diff_tensor.shape
+    result = diff_tensor.copy()
+
+    if len(shape) != 3:
+        raise ValueError(f"{len(train.shape)} is in invalid tensor order. Only 3rd order tensors are valid with this class")
+
+    if len(y0_tensor.shape) != 3:
+        raise ValueError(f"{len(y0_tensor.shape)} is in invalid tensor order. Only 3rd order tensors are valid with this class")
+
+    for i in range(shape[0]):
+        accum = 0
+        for j in range(i // interval):
+            accum += diff_tensor[i - (j+1)*interval]
+        result[i] += y0_tensor[-interval + i % interval] + accum
+    return result
+
 class LTAR():
     def __init__(self, train):
 
