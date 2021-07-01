@@ -50,7 +50,8 @@ while start_time <= end_time:
     # find the interactions of interest
     interactions_df = df[df['t'].between(start_time, start_time + time_interval - 1)]
 
-    print( start_time, interactions_df)
+    # debugging and viewing purposes
+    # print( start_time, interactions_df)
 
     # find the nodes of interest
     for i in range(len(interactions_df['t'])):
@@ -66,13 +67,14 @@ while start_time <= end_time:
         G.add_edge(node1, node2)
         G.edges.data()
 
+    """
+    # prints the adj matrix and the graph representation
     print(nx.adj_matrix(G).todense())
-    # display
+    # display graph
     pos = nx.spring_layout(G)  # pos = nx.nx_agraph.graphviz_layout(G)
-    #labels = nx.get_edge_attributes(G, 'weight')
     nx.draw(G, pos, **options)
     plt.show()
-
+    """
 
     # add to time graph
     G_over_time.append(nx.adj_matrix(G).todense())
