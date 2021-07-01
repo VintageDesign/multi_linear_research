@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import scipy as sp
 
 # read the data
-df = pd.read_csv(r"C:\Users\Jordan\Documents\SPACT_REU_Research\multi_linear_research\jordan\Data\RFID_data.txt", delimiter="\t")
+df = pd.read_csv(r"Data\\RFID_data.txt", delimiter="\t")
 
 
 # vars

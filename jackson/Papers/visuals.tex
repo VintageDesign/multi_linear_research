@@ -6,7 +6,8 @@
 \pgfmathsetmacro{\matrixl}{2}
 \pgfmathsetmacro{\vectorw}{0.1}
 
-\begin{tikzpicture}
+\hspace{-8cm}
+\begin{tikzpicture}[scale=0.75]
 \foreach \i in {0, 1, 2.5}{
 	\draw[black,fill=gray] (\i,0,0) -- ++(-\matrixw,0,0) -- ++(0,-\matrixl,0) -- ++(\matrixw,0,0) -- cycle;
 	\draw[black,fill=gray] (\i,0,0) -- ++(0,0,-\matrixl) -- ++(0,-\matrixl,0) -- ++(0,0,\matrixl) -- cycle;
@@ -47,27 +48,80 @@
 	\draw[black,fill=red] (\i + 9,0.4 - 6 * 0.4,0) -- ++(0,0,-\matrixl) -- ++(0,-\vectorw,0) -- ++(0,0,\matrixl) -- cycle;
 	\draw[black,fill=red] (\i + 9,0.4 - 6 * 0.4,0) -- ++(-\vectorw,0,0) -- ++(0,0,-\matrixl) -- ++(\vectorw,0,0) -- cycle;
 }
-\foreach \c [count=\j] in {blue, cyan} {
+\foreach \c [count=\j] in {cyan, blue} {
 	\node[draw=none] (ellipsis1) at (10.5,0.8 - \j * 0.4 , 0) {$\cdots$};
-          \node[draw=none] at (12.5,0.8- \j * 0.4 , 0) (n\j) {VAR$_\j$};
+          \node[draw=none] at (12.75,0.8- \j * 0.4 , 0) (n\j) {VAR$_\j$};
 	\draw[thick,->] (11.5,0.8 - \j * 0.4,0) -- (n\j);
-	\node[draw=none] at (14,0.8 - \j * 0.4 , 0) (o\j) {$\theta^{(\j)}$};
-	\draw[thick,<-] (o\j) -- (n\j);
-	\draw[thick,<-] (15,0.8 - \j * 0.4,0) -- (o\j);
+	\draw[thick,<-] (14,0.8 - \j * 0.4 , 0) -- (n\j);
+
+	\draw[black,fill=\c] (14 + \matrixl,\j * 0.4 - 0.8,0) -- ++(-\matrixl,0,0) -- ++(0,-\vectorw,0) -- ++(\matrixl,0,0) -- cycle;
+	\draw[black,fill=\c] (14 + \matrixl,\j * 0.4 - 0.8,0) -- ++(0,0,-\matrixl) -- ++(0,-\vectorw,0) -- ++(0,0,\matrixl) -- cycle;
+	\draw[black,fill=\c] (14 + \matrixl,\j * 0.4 - 0.8,0) -- ++(-\matrixl,0,0) -- ++(0,0,-\matrixl) -- ++(\matrixl,0,0) -- cycle;
+	\node[draw=none] (ellipsis1) at (15.5 + \matrixl,\j * 0.4 - 0.8 , -\matrixl/2) {$\cdots$};
+	\draw[black,fill=\c] (20.5,\j * 0.4 - 0.8,0) -- ++(-\matrixl,0,0) -- ++(0,-\vectorw,0) -- ++(\matrixl,0,0) -- cycle;
+	\draw[black,fill=\c] (20.5,\j * 0.4 - 0.8,0) -- ++(0,0,-\matrixl) -- ++(0,-\vectorw,0) -- ++(0,0,\matrixl) -- cycle;
+	\draw[black,fill=\c] (20.5,\j * 0.4 - 0.8,0) -- ++(-\matrixl,0,0) -- ++(0,0,-\matrixl) -- ++(\matrixl,0,0) -- cycle;
+	\draw[black,fill=\c] (21.5,\j * 0.4 - 0.8,0) -- ++(-\vectorw,0,0) -- ++(0,-\vectorw,0) -- ++(\vectorw,0,0) -- cycle;
+	\draw[black,fill=\c] (21.5,\j * 0.4 - 0.8,0) -- ++(0,0,-\matrixl) -- ++(0,-\vectorw,0) -- ++(0,0,\matrixl) -- cycle;
+	\draw[black,fill=\c] (21.5,\j * 0.4 - 0.8,0) -- ++(-\vectorw,0,0) -- ++(0,0,-\matrixl) -- ++(\vectorw,0,0) -- cycle;
+	\node[draw=none] (ellipsis1) at (22.25,0.4 - \j * 0.4, -\matrixl) {$\theta^{(\j)}$};
 }
+
 \node[draw=none] (ellipsis1) at (10.5,0.8 - 6 * 0.4 , 0) {$\cdots$};
-\node[draw=none] at (12.5,0.8- 6 * 0.4 , 0) (n6) {VAR$_j$};
+\node[draw=none] at (12.75,0.8- 6 * 0.4 , 0) (n6) {VAR$_j$};
 \draw[thick,->] (11.5,0.8 - 6 * 0.4,0) -- (n6);
-\node[draw=none] at (14,0.8 - 6 * 0.4 , 0) (o6) {$\theta^{(j)}$};
-\draw[thick,<-] (o6) -- (n6);
-\node[draw=none] (ellipsis1) at (10.5,-0.8, 0) {$\vdots$};
-\node[draw=none] (ellipsis1) at (12.5,-0.8, 0) {$\vdots$};
-\draw[thick,<-] (15,0.8 - 6 * 0.4,0) -- (o6);
-\node[draw, rotate=90] at (15.5,0.8- 3 * 0.4 , 0) (s) {Stack Frontal Slices};
-\node[draw=none] at (16.5,0.8- 3 * 0.4 , 0) (it) {$\mathcal{L}^{-1}$};
-\draw[thick,->] (s) -- (it);
-\node[draw=none] at (17.5,0.8- 3 * 0.4 , 0) (T) {$\Theta$};
-\draw[thick,->] (it) -- (T);
+\draw[thick,<-] (14,0.8 - 6 * 0.4 , 0) -- (n6);
+
+\draw[black,fill=red] (14 + \matrixl,0.4 - 6 * 0.4,0) -- ++(-\matrixl,0,0) -- ++(0,-\vectorw,0) -- ++(\matrixl,0,0) -- cycle;
+\draw[black,fill=red] (14 + \matrixl,0.4 - 6 * 0.4,0) -- ++(0,0,-\matrixl) -- ++(0,-\vectorw,0) -- ++(0,0,\matrixl) -- cycle;
+\draw[black,fill=red] (14 + \matrixl,0.4 - 6 * 0.4,0) -- ++(-\matrixl,0,0) -- ++(0,0,-\matrixl) -- ++(\matrixl,0,0) -- cycle;
+\node[draw=none] (ellipsis1) at (15.5 + \matrixl,0.4 - 6 * 0.4, -\matrixl/2) {$\cdots$};
+\draw[black,fill=red] (20.5,0.4 - 6 * 0.4,0) -- ++(-\matrixl,0,0) -- ++(0,-\vectorw,0) -- ++(\matrixl,0,0) -- cycle;
+\draw[black,fill=red] (20.5,0.4 - 6 * 0.4,0) -- ++(0,0,-\matrixl) -- ++(0,-\vectorw,0) -- ++(0,0,\matrixl) -- cycle;
+\draw[black,fill=red] (20.5,0.4 - 6 * 0.4,0) -- ++(-\matrixl,0,0) -- ++(0,0,-\matrixl) -- ++(\matrixl,0,0) -- cycle;
+\draw[black,fill=red] (21.5,0.4 - 6 * 0.4,0) -- ++(-\vectorw,0,0) -- ++(0,-\vectorw,0) -- ++(\vectorw,0,0) -- cycle;
+\draw[black,fill=red] (21.5,0.4 - 6 * 0.4,0) -- ++(0,0,-\matrixl) -- ++(0,-\vectorw,0) -- ++(0,0,\matrixl) -- cycle;
+\draw[black,fill=red] (21.5,0.4 - 6 * 0.4,0) -- ++(-\vectorw,0,0) -- ++(0,0,-\matrixl) -- ++(\vectorw,0,0) -- cycle;
+\node[draw=none] (ellipsis1) at (22.25,0.4 - 6 * 0.4, -\matrixl) {$\theta^{(j)}$};
+
+\node[draw=none] (ellipsis1) at (12.25,-1, -\matrixl/2) {$\vdots$};
+\node[draw=none] (ellipsis1) at (10,-1, -\matrixl/2) {$\vdots$};
+\node[draw=none] (ellipsis1) at (15,-1, -\matrixl/2) {$\vdots$};
+\node[draw=none] (ellipsis1) at (19.5,-1, -\matrixl/2) {$\vdots$};
+\node[draw=none] (ellipsis1) at (21.5,-1, -\matrixl/2) {$\vdots$};
+
+\draw[thick,->] (23, -1, -1) -- (24, -1, -1); 
+
+% Theta
+\foreach \i in {0, 4}{
+	\draw[black,fill=gray, fill opacity=0] (\i + 27,0,0) -- ++(-\matrixl,0,0) -- ++(0,-\matrixl,0) -- ++(\matrixl,0,0) -- cycle;
+	\draw[black,fill=gray, fill opacity=0] (\i + 27,0,0) -- ++(0,0,-\matrixl) -- ++(0,-\matrixl,0) -- ++(0,0,\matrixl) -- cycle;
+	\draw[black,fill=gray, fill opacity=0] (\i + 27,0,0) -- ++(-\matrixl,0,0) -- ++(0,0,-\matrixl) -- ++(\matrixl,0,0) -- cycle;
+	\foreach \c [count=\j] in {red, magenta, yellow, green, cyan, blue} {
+		\draw[black,fill=\c] (\i + 27,0,\j * 0.4 - 2.4) -- ++(-\matrixl,0,0) -- ++(0,-\matrixl,0) -- ++(\matrixl,0,0) -- cycle;
+		\draw[black,fill=\c] (\i + 27,0,\j * 0.4 - 2.4) -- ++(0,0,-\vectorw) -- ++(0,-\matrixl,0) -- ++(0,0,\vectorw) -- cycle;
+		\draw[black,fill=\c] (\i + 27,0,\j * 0.4 - 2.4) -- ++(-\matrixl,0,0) -- ++(0,0,-\vectorw) -- ++(\matrixl,0,0) -- cycle;
+
+	}
+}
+\draw[black,fill=gray, fill opacity=0] (32,0,0) -- ++(-\matrixw,0,0) -- ++(0,-\matrixl,0) -- ++(\matrixw,0,0) -- cycle;
+\draw[black,fill=gray, fill opacity=0] (32,0,0) -- ++(0,0,-\matrixl) -- ++(0,-\matrixl,0) -- ++(0,0,\matrixl) -- cycle;
+\draw[black,fill=gray, fill opacity=0] (32,0,0) -- ++(-\matrixw,0,0) -- ++(0,0,-\matrixl) -- ++(\matrixw,0,0) -- cycle;
+\foreach \c [count=\j] in {red, magenta, yellow, green, cyan, blue} {
+	\draw[black,fill=\c] (32,0,\j * 0.4 - 2.4) -- ++(-\matrixw,0,0) -- ++(0,-\matrixl,0) -- ++(\matrixw,0,0) -- cycle;
+	\draw[black,fill=\c] (32,0,\j * 0.4 - 2.4) -- ++(0,0,-\vectorw) -- ++(0,-\matrixl,0) -- ++(0,0,\vectorw) -- cycle;
+	\draw[black,fill=\c] (32,0,\j * 0.4 - 2.4) -- ++(-\matrixw,0,0) -- ++(0,0,-\vectorw) -- ++(\matrixw,0,0) -- cycle;
+}
+\node[draw=none] (ellipsis1) at (26.5,-2.5,) {$\tilde{\mathcal{A}}_1$};
+\node[draw=none] (ellipsis1) at (28.5,-1) {$\cdots$};
+\node[draw=none] (ellipsis1) at (30.5,-2.5,) {$\tilde{\mathcal{A}}_p$};
+\node[draw=none] (ellipsis1) at (32.5,-2.5,) {$\tilde{\mathcal{C}}$};
+
+\node[draw=none] (L) at (34,-1, -1) {$\mathcal{L}^{-1}$};
+\node[draw=none] (Theta1) at (35.5,-1, -1) {$\Theta$};
+\draw[thick,->] (32.5,-1,-1) -- (L);
+\draw[thick,<-] (Theta1) -- (L);
+
 \end{tikzpicture}
 
 \iffalse
