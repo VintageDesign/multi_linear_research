@@ -168,3 +168,22 @@ class LTAR():
                 total += self.__mul_ten_and_mat(self.coefs[j], forecast_tensor[i-j-1])
             forecast_tensor[i] = total + self.c
         return forecast_tensor[p:]
+
+    def single_step_forecast(self, interval, test_tensor):
+        
+        if self.p < 1:
+            raise RuntimeError("Model is not fitted!")
+
+        p = self.p
+        matrix_shape = self.matrix_shape
+        forecast_tensor = np.zeros((interval, matrix_shape[0], matrix_shape[1]))
+        truth_tensor = np.zeros((interval+p, matrix_shape[0], matrix_shape[1]))
+        truth_tensor[:p] = self.train[-p:]
+        for i in range(p, interval+p):
+            total = np.zeros(matrix_shape)
+            for j in range(p):
+                total += self.__mul_ten_and_mat(self.coefs[j], truth_tensor[i-j-1])
+            total += self.c
+            forecast_tensor[i-p] = total
+            truth_tensor[i] = test_tensor[i-p]
+        return forecast_tensor
