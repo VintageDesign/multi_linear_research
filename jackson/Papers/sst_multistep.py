@@ -11,7 +11,7 @@ import statistics
 
 sys.path.insert(0, '../Libraries')
 import JacksonsTSPackage as jts
-from ltar import LTAR, LTARI, LSTAR
+from ltar import LTAR
 from keras.models import Sequential
 from keras.layers import LSTM
 from keras.layers import Dense
@@ -75,7 +75,7 @@ lstm = []
 ltar = []
 ltari = []
 lstar = []
-for i in range(10):
+for i in range(1):
     print(i)
     start = time.time()
     model.fit(train_X, train_y, epochs=200, verbose=1)
@@ -88,18 +88,18 @@ for i in range(10):
     end = time.time()
     ltar.append(end-start)
 
-    dct_ltari = LTARI(train_tensor)
-    start = time.time()
-    dct_ltari.fit(19, 1, "dct")
-    end = time.time()
-    ltari.append(end-start)
+    # dct_ltari = LTARI(train_tensor)
+    # start = time.time()
+    # dct_ltari.fit(19, 1, "dct")
+    # end = time.time()
+    # ltari.append(end-start)
 
-    interval = 24
-    dct_lstar = LSTAR(train_tensor)
-    start = time.time()
-    dct_lstar.fit(3, interval, "dct")
-    end = time.time()
-    lstar.append(end-start)
+    # interval = 24
+    # dct_lstar = LSTAR(train_tensor)
+    # start = time.time()
+    # dct_lstar.fit(3, interval, "dct")
+    # end = time.time()
+    # lstar.append(end-start)
 
 print("LSTM:", np.average(lstm))
 print("L-TAR:", np.average(ltar))
