@@ -6,7 +6,7 @@ Created on Mon Jul 20 09:42:10 2020
 @author: rhoover
 """
 
-from Libraries.JacksonsTSPackage import forecast
+
 from matplotlib import animation
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -15,10 +15,13 @@ import numpy as np
 import pandas as pd
 from networkx.algorithms import community
 from networkx.generators.community import LFR_benchmark_graph
+
+
 import sys
-sys.path.insert(0, 'Libraries')
+sys.path.append(r"C:\Users\Jordan\Documents\SPACT_REU_Research\multi_linear_research\jackson\Libraries")
 import JacksonsTSPackage as jts
 from ltar import LTAR, diff, invert_diff
+
 
 ### Standard Linear Algebra Package  ###
 import numpy.linalg as la
@@ -29,6 +32,8 @@ n = 50
 p = 0.2
 period = 100
 
+
+###  Create the graphs
 G = nx.fast_gnp_random_graph(n,p,seed = 4652, directed = False)
 G_adj = nx.to_numpy_matrix(G)
 tensor = np.zeros((N, n, n))
@@ -38,19 +43,22 @@ for i in range(N):
     Gsbm = nx.to_numpy_matrix(nx.stochastic_block_model([n//2,n//2],P))
     tensor[i] = Gsbm
 
-####  Visualization of the graphs
-# norm = np.array([la.norm(adj) for adj in tensor])
-# plt.plot(np.arange(len(tensor)), norm)
-# plt.show()
+###  Visualization of the graphs
+###  Plot the norm of the graph
+norm = np.array([la.norm(adj) for adj in tensor])
+plt.plot(np.arange(len(tensor)), norm)
+plt.show()
 
-# fig, ax = plt.subplots()
-# def animate(i):
-#     ax.clear()
-#     nx.draw_networkx(nx.from_numpy_matrix(tensor[i]), node_size=10, with_labels=False)
-# ani = FuncAnimation(fig, animate, frames = len(tensor), interval=100)
-# #ani.save("graph.gif")
-# plt.show()
+###  Animate the graphs
+fig, ax = plt.subplots()
+def animate(i):
+    ax.clear()
+    nx.draw_networkx(nx.from_numpy_matrix(tensor[i]), node_size=10, with_labels=False)
+ani = FuncAnimation(fig, animate, frames = len(tensor), interval=100)
+#ani.save("graph.gif")
+plt.show()
 
+###  Animate the adj matrix of tensor
 def animate_tensor(tensor, N, save_path):
     global im
     global display_tensor
@@ -60,13 +68,16 @@ def animate_tensor(tensor, N, save_path):
     ani = FuncAnimation(fig, animate, interval = 100, frames = N, blit=True)
     plt.show()
     ani.save(save_path)
+
 def animate(i):
     global im
     im.set_array(display_tensor[i])
     return im,
 
-#animate_tensor(tensor, 200, "adj_mat.gif")
+animate_tensor(tensor, 200, "adj_mat.gif")
 
+
+###  Create model
 N_train = 800
 N_test = 200
 train_tensor = jts.extract_train_tensor(tensor, N_train)
@@ -77,10 +88,18 @@ ltar = LTAR(diff(train_tensor, 100))
 ltar.fit(20, "dct")
 result_tensor = invert_diff(ltar.forecast(N_test), train_tensor, interval)
 
+
+###  Plot error 
 error = jts.calc_mape_per_matrix(test_tensor, result_tensor)
 error.plot()
 plt.show()
 
+###  Plot the norm of the forecasted graph
+forecasted_norm = np.array([la.norm(adj) for adj in result_tensor])
+plt.plot(np.arange(len(result_tensor)), forecasted_norm)
+plt.show()
+
+###  Plot the norms of the original and forecasted tensors
 def calc_norm(tensor):
     norms = []
     for i in range(len(tensor)):
@@ -90,4 +109,27 @@ df = pd.concat([calc_norm(test_tensor), calc_norm(result_tensor)], axis=1)
 df.plot()
 plt.show()
 
+###  Adj matrix for forecasted tensor
 animate_tensor(result_tensor, len(result_tensor), "forecast.gif")
+
+print(len(result_tensor))
+
+
+###  Correcting the data values
+for i in range(len(result_tensor)):
+    for j in range(n):
+        for k in range(n):
+            if result_tensor[i][j][k] <= 0.5:
+                result_tensor[i][j][k] = 0
+            else:
+                result_tensor[i][j][k] = 1
+
+
+###  Visualization of the forecasted graphs
+fig, ax = plt.subplots()
+def animate_forecast(i):
+    ax.clear()
+    nx.draw_networkx(nx.from_numpy_matrix(result_tensor[i]), node_size=10, with_labels=False)
+ani = FuncAnimation(fig, animate_forecast, frames = len(result_tensor), interval=100)
+ani.save("forecasted_graph.gif")
+plt.show()
