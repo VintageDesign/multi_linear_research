@@ -43,6 +43,14 @@ for i in range(N):
     Gsbm = nx.to_numpy_matrix(nx.stochastic_block_model([n//2,n//2],P))
     tensor[i] = Gsbm
 
+
+color_map = []
+for node in G:
+    if node <= 25:
+        color_map.append('blue')
+    else:
+        color_map.append('orange')
+
 ###  Visualization of the graphs
 ###  Plot the norm of the graph
 norm = np.array([la.norm(adj) for adj in tensor])
@@ -53,7 +61,7 @@ plt.show()
 fig, ax = plt.subplots()
 def animate(i):
     ax.clear()
-    nx.draw_networkx(nx.from_numpy_matrix(tensor[i]), node_size=10, with_labels=False)
+    nx.draw_networkx(nx.from_numpy_matrix(tensor[i]), node_size=10, with_labels=True, node_color=color_map)
 ani = FuncAnimation(fig, animate, frames = len(tensor), interval=100)
 #ani.save("graph.gif")
 plt.show()
@@ -129,7 +137,7 @@ for i in range(len(result_tensor)):
 fig, ax = plt.subplots()
 def animate_forecast(i):
     ax.clear()
-    nx.draw_networkx(nx.from_numpy_matrix(result_tensor[i]), node_size=10, with_labels=False)
+    nx.draw_networkx(nx.from_numpy_matrix(result_tensor[i]), node_size=10, with_labels=False, node_color=color_map)
 ani = FuncAnimation(fig, animate_forecast, frames = len(result_tensor), interval=100)
 ani.save("forecasted_graph.gif")
 plt.show()
