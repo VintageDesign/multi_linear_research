@@ -12,6 +12,7 @@ import statistics
 sys.path.insert(0, '../Libraries')
 import JacksonsTSPackage as jts
 from ltar import LTAR
+from mlds import LMLDS
 from keras.models import Sequential
 from keras.layers import LSTM
 from keras.layers import Dense
@@ -73,9 +74,10 @@ model.compile(optimizer='adam', loss='mse')
 
 lstm = []
 ltar = []
+lmlds = []
 ltari = []
 lstar = []
-for i in range(1):
+for i in range(20):
     print(i)
     start = time.time()
     model.fit(train_X, train_y, epochs=200, verbose=1)
@@ -87,6 +89,12 @@ for i in range(1):
     dct_ltar.fit(19, "dct")
     end = time.time()
     ltar.append(end-start)
+
+    dct_lmlds = LMLDS(train_tensor)
+    start = time.time()
+    dct_lmlds.fit()
+    end = time.time()
+    lmlds.append(end-start)
 
     # dct_ltari = LTARI(train_tensor)
     # start = time.time()
@@ -102,6 +110,7 @@ for i in range(1):
     # lstar.append(end-start)
 
 print("LSTM:", np.average(lstm))
+print("LMLDS:", np.average(lmlds))
 print("L-TAR:", np.average(ltar))
 print("L-TARI:", np.average(ltari))
 print("L-STAR:", np.average(lstar))
@@ -109,20 +118,21 @@ print("L-STAR:", np.average(lstar))
 yhat = model.predict(test_X, verbose=0)
 predict_tensor = yhat.reshape((N_test, tensor_shape[1], tensor_shape[2]))
 dct_result_tensor = dct_ltar.forecast(N_test)
-dcti_result_tensor = dct_ltari.forecast(N_test)
-dcts_result_tensor = dct_lstar.forecast(N_test)
+lmlds_result_tensor = dct_lmlds.forecast(N_test)
+# dcti_result_tensor = dct_ltari.forecast(N_test)
+# dcts_result_tensor = dct_lstar.forecast(N_test)
 
 dct_error = jts.calc_mape_per_matrix(test_tensor, dct_result_tensor)
 dct_error = dct_error.rename(columns={"MAPE": "dct-TAR"})
-dcti_error = jts.calc_mape_per_matrix(test_tensor, dcti_result_tensor)
-dcti_error = dcti_error.rename(columns={"MAPE": "dct-TARI"})
-dcts_error = jts.calc_mape_per_matrix(test_tensor, dcts_result_tensor)
-dcts_error = dcts_error.rename(columns={"MAPE": "dct-STAR"})
+# dcti_error = jts.calc_mape_per_matrix(test_tensor, dcti_result_tensor)
+# dcti_error = dcti_error.rename(columns={"MAPE": "dct-TARI"})
+# dcts_error = jts.calc_mape_per_matrix(test_tensor, dcts_result_tensor)
+# dcts_error = dcts_error.rename(columns={"MAPE": "dct-STAR"})
 lstm_error = jts.calc_mape_per_matrix(test_tensor, predict_tensor)
 lstm_error = lstm_error.rename(columns={"MAPE": "LSTM"})
-mlds_err = sio.loadmat('err_data\\err_sst_multi.mat')
-mlds_error = pd.DataFrame(np.transpose(mlds_err['err_dct']), index=dct_error.index, columns=["dct-MLDS"])
-df = pd.concat([mlds_error, dct_error, dcti_error, dcts_error, lstm_error], axis=1)
+mlds_error = jts.calc_mape_per_matrix(test_tensor, lmlds_result_tensor)
+mlds_error = mlds_error.rename(columns={"MAPE": "dct-MLDS"})
+df = pd.concat([mlds_error, dct_error, lstm_error], axis=1) #dcti_error, dcts_error, 
 ax = df.plot()
 ax.set_xlabel("Hours")
 ax.set_ylabel("Error")

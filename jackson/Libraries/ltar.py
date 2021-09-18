@@ -9,7 +9,7 @@ def diff(data_tensor, interval = 1):
     shape = data_tensor.shape
 
     if len(shape) != 3:
-        raise ValueError(f"{len(train.shape)} is in invalid tensor order. Only 3rd order tensors are valid with this class")
+        raise ValueError(f"{len(data_tensor.shape)} is in invalid tensor order. Only 3rd order tensors are valid with this class")
 
     diff = np.zeros((shape[0] - interval, shape[1], shape[2]))
     for i in range(interval, shape[0] - interval + 1):
@@ -21,7 +21,7 @@ def invert_diff(diff_tensor, y0_tensor, interval = 1):
     result = diff_tensor.copy()
 
     if len(shape) != 3:
-        raise ValueError(f"{len(train.shape)} is in invalid tensor order. Only 3rd order tensors are valid with this class")
+        raise ValueError(f"{len(diff_tensor.shape)} is in invalid tensor order. Only 3rd order tensors are valid with this class")
 
     if len(y0_tensor.shape) != 3:
         raise ValueError(f"{len(y0_tensor.shape)} is in invalid tensor order. Only 3rd order tensors are valid with this class")
