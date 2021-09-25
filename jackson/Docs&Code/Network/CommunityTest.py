@@ -18,11 +18,6 @@ from networkx.algorithms import community
 from networkx.generators.community import LFR_benchmark_graph
 
 
-import sys
-sys.path.append(r"F:\repos\multi_linear_research\jackson\Libraries")
-import JacksonsTSPackage as jts
-from ltar import LTAR, diff, invert_diff
-
 
 ### Standard Linear Algebra Package  ###
 import numpy.linalg as la
